@@ -28,6 +28,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import PermissionGate from "@/components/auth/PermissionGate";
+import { PERMISSIONS } from "@/lib/permissions";
 import { useProducts } from "@/hooks/useProducts";
 import {
   useStockTransactions,
@@ -63,10 +65,12 @@ export default function Inventory() {
           </p>
         </div>
 
-        <Button onClick={() => setOpen(true)}>
-          <ArrowDownToLine className="size-4" />
-          Stock In / Out
-        </Button>
+        <PermissionGate permission={PERMISSIONS.inventory.manage}>
+          <Button onClick={() => setOpen(true)}>
+            <ArrowDownToLine className="size-4" />
+            Stock In / Out
+          </Button>
+        </PermissionGate>
       </div>
 
       {/* Low stock alerts */}

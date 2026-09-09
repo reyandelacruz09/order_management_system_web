@@ -19,6 +19,72 @@ export type CreateCustomerPayload = {
 
 export type UpdateCustomerPayload = Partial<CreateCustomerPayload>;
 
+export interface CustomerFormAssignment {
+  template_id: number;
+  template_name: string;
+}
+
+export async function getCustomerFormAssignment(
+  id: number
+): Promise<CustomerFormAssignment> {
+  const response = await apiFetch(`/api/customers/${id}/form-assignment`);
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(response, "Failed to fetch form assignment")
+    );
+  }
+
+  return response.json();
+}
+
+export async function setCustomerFormAssignment(
+  id: number,
+  template_id: number | null
+) {
+  const response = await apiFetch(`/api/customers/${id}/form-assignment`, {
+    method: "PUT",
+    body: JSON.stringify({ template_id }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(response, "Failed to update form assignment")
+    );
+  }
+
+  return response.json();
+}
+
+export async function setCustomerPassword(id: number, password: string) {
+  const response = await apiFetch(`/api/customers/${id}/password`, {
+    method: "PUT",
+    body: JSON.stringify({ password }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(response, "Failed to set customer password")
+    );
+  }
+
+  return response.json();
+}
+
+export async function getCustomerPasswordStatus(
+  id: number
+): Promise<{ has_password: boolean; email: string }> {
+  const response = await apiFetch(`/api/customers/${id}/password-status`);
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(response, "Failed to fetch password status")
+    );
+  }
+
+  return response.json();
+}
+
 export async function getCustomers(): Promise<Customer[]> {
   const response = await apiFetch("/api/customers");
 

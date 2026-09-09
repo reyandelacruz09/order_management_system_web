@@ -22,6 +22,7 @@ export default function UpdateProductDialog({ product }: Props) {
     name: product.name,
     price: String(product.price),
     stock: String(product.stock),
+    is_active: product.is_active ?? true,
   });
   const [error, setError] = useState("");
 
@@ -35,6 +36,7 @@ export default function UpdateProductDialog({ product }: Props) {
         name: product.name,
         price: String(product.price),
         stock: String(product.stock),
+        is_active: product.is_active ?? true,
       });
       setError("");
     }
@@ -63,6 +65,7 @@ export default function UpdateProductDialog({ product }: Props) {
           name: form.name.trim(),
           price: Number(form.price),
           stock: Number(form.stock),
+          is_active: form.is_active,
         },
       });
 
@@ -127,6 +130,18 @@ export default function UpdateProductDialog({ product }: Props) {
                 }
               />
             </div>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-4 accent-indigo-500"
+                checked={form.is_active}
+                onChange={(e) =>
+                  setForm({ ...form, is_active: e.target.checked })
+                }
+              />
+              Visible in customer catalog
+            </label>
 
             {error && (
               <p className="text-sm text-red-500">{error}</p>

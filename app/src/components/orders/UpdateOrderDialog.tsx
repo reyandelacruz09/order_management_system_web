@@ -10,7 +10,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { useOrder, useUpdateOrder } from "@/hooks/userOrders";
 import { useProducts } from "@/hooks/useProducts";
+import { useCustomerFormFields } from "@/hooks/useFormFields";
 import OrderItemsEditor from "./OrderItemsEditor";
+import CustomFieldsEditor from "./CustomFieldsEditor";
 import type { OrderItemFormRow } from "./orderItemsForm";
 import type { OrderWithItems } from "@/services/orders";
 import type { Product } from "@/services/products";
@@ -74,9 +76,15 @@ function UpdateOrderForm({ order, products, onSaved }: FormProps) {
       quantity: String(item.quantity),
     }))
   );
+  const [customValues, setCustomValues] = useState<Record<string, unknown>>(
+    () => ({ ...(order.custom_fields ?? {}) })
+  );
   const [error, setError] = useState("");
 
   const updateOrder = useUpdateOrder();
+  const { data: formFields = [] } = useCustomerFormFields(order.customer_id);
+
+  const activeFields = formFields.filter((field) => field.active);
 
   async function handleSave() {
     if (items.length === 0) {
@@ -109,6 +117,7 @@ function UpdateOrderForm({ order, products, onSaved }: FormProps) {
             product_id: Number(row.product_id),
             quantity: Number(row.quantity),
           })),
+          custom_fields: customValues,
         },
       });
 
@@ -146,6 +155,14 @@ function UpdateOrderForm({ order, products, onSaved }: FormProps) {
           rows={items}
           onChange={setItems}
         />
+
+        {activeFields.length > 0 && (
+          <CustomFieldsEditor
+            fields={activeFields}
+            values={customValues}
+            onChange={setCustomValues}
+          />
+        )}
 
         {error && (
           <p className="text-sm text-red-500">{error}</p>

@@ -5,12 +5,14 @@ import {
   ChevronsLeft,
   ChevronsRight,
   LayoutDashboard,
+  LayoutTemplate,
   Package,
   ShieldAlert,
   ShoppingCart,
   UserCog,
   UserRound,
   Users,
+  UsersRound,
 } from "lucide-react";
 import useAuth from "@/hooks/useAuth";
 import { PERMISSIONS, hasPermission } from "@/lib/permissions";
@@ -62,6 +64,18 @@ const menuItems: {
     path: "/users",
     icon: UserCog,
     permission: PERMISSIONS.users.manage,
+  },
+  {
+    name: "Form Templates",
+    path: "/form-templates",
+    icon: LayoutTemplate,
+    permission: PERMISSIONS.orders.manage,
+  },
+  {
+    name: "Customer Groups",
+    path: "/customer-groups",
+    icon: UsersRound,
+    permission: PERMISSIONS.orders.manage,
   },
   { name: "Profile", path: "/profile", icon: UserRound },
 ];

@@ -11,7 +11,9 @@ import { Label } from "@/components/ui/label";
 import { useCreateOrder } from "@/hooks/userOrders";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useProducts } from "@/hooks/useProducts";
+import { useCustomerFormFields } from "@/hooks/useFormFields";
 import OrderItemsEditor from "./OrderItemsEditor";
+import CustomFieldsEditor from "./CustomFieldsEditor";
 import { emptyItemRow, type OrderItemFormRow } from "./orderItemsForm";
 
 const ORDER_STATUSES = ["Pending", "Processing", "Completed"];
@@ -21,11 +23,17 @@ export default function CreateOrderDialog() {
   const [customerId, setCustomerId] = useState("");
   const [status, setStatus] = useState("Pending");
   const [items, setItems] = useState<OrderItemFormRow[]>([{ ...emptyItemRow }]);
+  const [customValues, setCustomValues] = useState<Record<string, unknown>>();
   const [error, setError] = useState("");
 
   const createOrder = useCreateOrder();
   const { data: customers = [] } = useCustomers();
   const { data: products = [] } = useProducts();
+  const { data: formFields = [] } = useCustomerFormFields(
+    customerId ? Number(customerId) : null
+  );
+
+  const activeFields = formFields.filter((field) => field.active);
 
   function handleOpenChange(nextOpen: boolean) {
     setOpen(nextOpen);
@@ -34,6 +42,7 @@ export default function CreateOrderDialog() {
       setCustomerId("");
       setStatus("Pending");
       setItems([{ ...emptyItemRow }]);
+      setCustomValues(undefined);
       setError("");
     }
   }
@@ -68,6 +77,7 @@ export default function CreateOrderDialog() {
           product_id: Number(row.product_id),
           quantity: Number(row.quantity),
         })),
+        custom_fields: customValues ?? {},
       });
 
       setOpen(false);
@@ -97,7 +107,10 @@ export default function CreateOrderDialog() {
                 id="order-customer"
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
+                onChange={(e) => {
+                  setCustomerId(e.target.value);
+                  setCustomValues(undefined);
+                }}
               >
                 <option value="">Select a customer</option>
                 {customers.map((customer) => (
@@ -129,6 +142,14 @@ export default function CreateOrderDialog() {
               rows={items}
               onChange={setItems}
             />
+
+            {activeFields.length > 0 && (
+              <CustomFieldsEditor
+                fields={activeFields}
+                values={customValues ?? {}}
+                onChange={setCustomValues}
+              />
+            )}
 
             {error && (
               <p className="text-sm text-red-500">{error}</p>
