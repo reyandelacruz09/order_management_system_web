@@ -15,6 +15,7 @@ export interface OrderRow {
   status: string;
   total_amount: string | number;
   created_at: string;
+  custom_fields?: Record<string, unknown>;
 }
 
 export type OrderWithItems = OrderRow & {
@@ -30,11 +31,13 @@ export type CreateOrderPayload = {
   customer_id: number;
   status?: string;
   items: OrderItemPayload[];
+  custom_fields?: Record<string, unknown>;
 };
 
 export type UpdateOrderPayload = {
   status?: string;
   items?: OrderItemPayload[];
+  custom_fields?: Record<string, unknown>;
 };
 
 export type OrdersPage = {

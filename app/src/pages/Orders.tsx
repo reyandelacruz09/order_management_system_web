@@ -5,11 +5,14 @@ import {
   DataTable,
   type DataTableColumn,
 } from "@/components/data-table";
+import PermissionGate from "@/components/auth/PermissionGate";
 import CreateOrderDialog from "@/components/orders/CreateOrderDialog";
 import UpdateOrderDialog from "@/components/orders/UpdateOrderDialog";
 import DeleteOrderDialog from "@/components/orders/DeleteOrderDialog";
 import { useOrders } from "@/hooks/userOrders";
 import { useCustomers } from "@/hooks/useCustomers";
+import useAuth from "@/hooks/useAuth";
+import { PERMISSIONS, hasPermission } from "@/lib/permissions";
 import type { OrderRow } from "@/services/orders";
 
 const statusClassName: Record<string, string> = {
@@ -19,6 +22,8 @@ const statusClassName: Record<string, string> = {
 };
 
 export default function Orders() {
+  const { user } = useAuth();
+  const canManage = hasPermission(user, PERMISSIONS.orders.manage);
   const {
     data,
     isPending,
@@ -68,18 +73,22 @@ export default function Orders() {
       cellClassName: "text-muted-foreground",
       cell: (order) => new Date(order.created_at).toLocaleDateString(),
     },
-    {
-      id: "actions",
-      header: "Action",
-      headerClassName: "text-right",
-      cellClassName: "text-right",
-      cell: (order) => (
-        <div className="flex items-center justify-end gap-2">
-          <UpdateOrderDialog orderId={order.id} />
-          <DeleteOrderDialog orderId={order.id} />
-        </div>
-      ),
-    },
+    ...(canManage
+      ? [
+          {
+            id: "actions",
+            header: "Action",
+            headerClassName: "text-right",
+            cellClassName: "text-right",
+            cell: (order: OrderRow) => (
+              <div className="flex items-center justify-end gap-2">
+                <UpdateOrderDialog orderId={order.id} />
+                <DeleteOrderDialog orderId={order.id} />
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   if (isPending) {
@@ -116,7 +125,11 @@ export default function Orders() {
         }
         emptyIcon={PackageOpen}
         emptyTitle="No orders found."
-        actions={<CreateOrderDialog />}
+        actions={
+          <PermissionGate permission={PERMISSIONS.orders.manage}>
+            <CreateOrderDialog />
+          </PermissionGate>
+        }
       />
     </div>
   );

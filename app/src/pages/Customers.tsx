@@ -5,10 +5,16 @@ import {
   DataTable,
   type DataTableColumn,
 } from "@/components/data-table";
+import PermissionGate from "@/components/auth/PermissionGate";
 import CreateCustomerDialog from "@/components/customers/CreateCustomerDialog";
 import CustomerDetailDialog from "@/components/customers/CustomerDetailDialog";
 import UpdateCustomerDialog from "@/components/customers/UpdateCustomerDialog";
+import FormBuilderDialog from "@/components/customers/FormBuilderDialog";
+import FormAssignmentDialog from "@/components/customers/FormAssignmentDialog";
+import SetPasswordDialog from "@/components/customers/SetPasswordDialog";
 import { useCustomers } from "@/hooks/useCustomers";
+import useAuth from "@/hooks/useAuth";
+import { PERMISSIONS, hasPermission } from "@/lib/permissions";
 import type { Customer } from "@/services/customers";
 
 function getInitials(firstName: string, lastName: string) {
@@ -16,6 +22,9 @@ function getInitials(firstName: string, lastName: string) {
 }
 
 export default function Customers() {
+  const { user } = useAuth();
+  const canManage = hasPermission(user, PERMISSIONS.customers.manage);
+  const canManageForms = hasPermission(user, PERMISSIONS.orders.manage);
   const {
     data: customers = [],
     isPending,
@@ -57,24 +66,35 @@ export default function Customers() {
       header: "Phone",
       cell: (customer) => customer.phone,
     },
-    {
-      id: "actions",
-      header: "Action",
-      headerClassName: "text-right",
-      cellClassName: "text-right",
-      cell: (customer) => (
-        <div className="flex justify-end gap-2">
-          <UpdateCustomerDialog customer={customer} />
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => handleDelete(customer.id)}
-          >
-            Delete
-          </Button>
-        </div>
-      ),
-    },
+    ...(canManage || canManageForms
+      ? [
+          {
+            id: "actions",
+            header: "Action",
+            headerClassName: "text-right",
+            cellClassName: "text-right",
+            cell: (customer: Customer) => (
+              <div className="flex justify-end gap-2">
+                {canManage && <UpdateCustomerDialog customer={customer} />}
+                {canManage && <SetPasswordDialog customer={customer} />}
+                {canManageForms && <FormBuilderDialog customer={customer} />}
+                {canManageForms && (
+                  <FormAssignmentDialog customer={customer} />
+                )}
+                {canManage && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDelete(customer.id)}
+                  >
+                    Delete
+                  </Button>
+                )}
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   if (isPending) {
@@ -111,7 +131,11 @@ export default function Customers() {
         }
         emptyIcon={UsersRound}
         emptyTitle="No customers found."
-        actions={<CreateCustomerDialog />}
+        actions={
+          <PermissionGate permission={PERMISSIONS.customers.manage}>
+            <CreateCustomerDialog />
+          </PermissionGate>
+        }
       />
     </div>
   );

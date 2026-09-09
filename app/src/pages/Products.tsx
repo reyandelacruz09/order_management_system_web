@@ -20,9 +20,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import PermissionGate from "@/components/auth/PermissionGate";
 import CreateProductDialog from "@/components/products/CreateProductDialog";
 import UpdateProductDialog from "@/components/products/UpdateProductDialog";
 import { useProducts } from "@/hooks/useProducts";
+import useAuth from "@/hooks/useAuth";
+import { PERMISSIONS, hasPermission } from "@/lib/permissions";
 
 function getStockBadge(stock: number) {
   if (stock === 0) {
@@ -46,6 +49,8 @@ function getStockBadge(stock: number) {
 }
 
 export default function Products() {
+  const { user } = useAuth();
+  const canManage = hasPermission(user, PERMISSIONS.products.manage);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
 
@@ -97,7 +102,9 @@ export default function Products() {
           </p>
         </div>
 
-        <CreateProductDialog />
+        <PermissionGate permission={PERMISSIONS.products.manage}>
+          <CreateProductDialog />
+        </PermissionGate>
       </div>
 
       <Card>
@@ -127,14 +134,20 @@ export default function Products() {
                 <TableHead>Price</TableHead>
                 <TableHead>Stock</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead>Catalog</TableHead>
+                {canManage && (
+                  <TableHead className="text-right">Action</TableHead>
+                )}
               </TableRow>
             </TableHeader>
 
             <TableBody>
               {data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-12">
+                  <TableCell
+                    colSpan={canManage ? 7 : 6}
+                    className="py-12"
+                  >
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <PackageSearch className="size-8" />
                       <p>No products found.</p>
@@ -165,18 +178,31 @@ export default function Products() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex justify-end gap-2">
-                          <UpdateProductDialog product={product} />
-
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDelete(product.id)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
+                        {product.is_active === false ? (
+                          <Badge className="border-muted-foreground/30 bg-muted-foreground/10 text-muted-foreground">
+                            Hidden
+                          </Badge>
+                        ) : (
+                          <Badge className="border-indigo-300 bg-indigo-500/10 text-indigo-600 dark:border-indigo-400/40 dark:text-indigo-400">
+                            Visible
+                          </Badge>
+                        )}
                       </TableCell>
+                      {canManage && (
+                        <TableCell>
+                          <div className="flex justify-end gap-2">
+                            <UpdateProductDialog product={product} />
+
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDelete(product.id)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })

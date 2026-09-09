@@ -1,0 +1,300 @@
+import { useState } from "react";
+import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import FieldBuilderForm from "@/components/forms/FieldBuilderForm";
+import {
+  draftForField,
+  emptyDraft,
+  type DraftField,
+} from "@/components/forms/fieldDraft";
+import {
+  useCreateFormField,
+  useCustomerFormFields,
+  useDeleteFormField,
+  useReorderFormFields,
+  useUpdateFormField,
+} from "@/hooks/useFormFields";
+import { FIELD_LABELS } from "@/components/orders/CustomFieldsEditor";
+import type { Customer } from "@/services/customers";
+import type { FormField } from "@/services/formFields";
+
+type Props = {
+  customer: Customer;
+};
+
+type Draft = DraftField;
+
+export default function FormBuilderDialog({ customer }: Props) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [error, setError] = useState("");
+
+  const {
+    data: fields = [],
+    isPending,
+  } = useCustomerFormFields(open ? customer.id : null);
+  const createField = useCreateFormField();
+  const updateField = useUpdateFormField();
+  const deleteField = useDeleteFormField();
+  const reorderFields = useReorderFormFields();
+
+  const isSaving = createField.isPending || updateField.isPending;
+
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+
+    if (!nextOpen) {
+      setDraft(null);
+      setError("");
+    }
+  }
+
+  function handleMove(index: number, direction: -1 | 1) {
+    const target = index + direction;
+
+    if (target < 0 || target >= fields.length) {
+      return;
+    }
+
+    const ids = fields.map((field) => field.id);
+    ids[index] = fields[target].id;
+    ids[target] = fields[index].id;
+
+    reorderFields.mutate({
+      customerId: customer.id,
+      orderedIds: ids,
+    });
+  }
+
+  async function handleDelete(field: FormField) {
+    if (!window.confirm(`Delete the field "${field.label}"?`)) {
+      return;
+    }
+
+    try {
+      await deleteField.mutateAsync(field.id);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to delete form field."
+      );
+    }
+  }
+
+  async function handleSaveDraft() {
+    if (!draft) {
+      return;
+    }
+
+    if (!draft.label.trim()) {
+      setError("A label is required.");
+      return;
+    }
+
+    const isSelect = draft.field_type === "select";
+    const validOptions = draft.options.filter(
+      (option) => option.label.trim() && option.value.trim()
+    );
+
+    if (isSelect && validOptions.length === 0) {
+      setError("Add at least one complete option for the dropdown.");
+      return;
+    }
+
+    const data = {
+      label: draft.label.trim(),
+      field_type: draft.field_type,
+      required: draft.required,
+      active: draft.active,
+      placeholder: isSelect ? undefined : draft.placeholder.trim() || undefined,
+      ...(isSelect && validOptions.length > 0
+        ? {
+            options: validOptions.map((option) => ({
+              label: option.label.trim(),
+              value: option.value.trim(),
+            })),
+          }
+        : {}),
+    };
+
+    try {
+      if (draft.id != null) {
+        await updateField.mutateAsync({ id: draft.id, data });
+      } else {
+        await createField.mutateAsync({ customerId: customer.id, data });
+      }
+
+      setDraft(null);
+      setError("");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to save form field."
+      );
+    }
+  }
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        Form Builder
+      </Button>
+
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Form Builder</DialogTitle>
+            <DialogDescription>
+              Customize the order form for {customer.first_name}{" "}
+              {customer.last_name}. These fields appear when creating or
+              updating this customer&apos;s orders.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isPending ? (
+            <p className="py-4 text-sm text-muted-foreground">
+              Loading form fields...
+            </p>
+          ) : draft ? (
+            <FieldBuilderForm
+              draft={draft}
+              onChange={setDraft}
+              isSaving={isSaving}
+              onSave={handleSaveDraft}
+              onCancel={() => {
+                setDraft(null);
+                setError("");
+              }}
+            />
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {fields.length === 0
+                    ? "No custom fields yet for this customer."
+                    : `${fields.length} field${fields.length === 1 ? "" : "s"} defined.`}
+                </p>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setDraft(emptyDraft());
+                    setError("");
+                  }}
+                >
+                  <Plus />
+                  Add Field
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                {fields.map((field, index) => (
+                  <div
+                    key={field.id}
+                    className="flex items-center gap-2 rounded-lg border border-input px-3 py-2"
+                  >
+                    <div className="flex flex-col">
+                      <Button
+                        type="button"
+                        size="icon-xs"
+                        variant="ghost"
+                        disabled={index === 0 || deleteField.isPending}
+                        onClick={() => handleMove(index, -1)}
+                        aria-label="Move field up"
+                      >
+                        <ChevronUp />
+                      </Button>
+
+                      <Button
+                        type="button"
+                        size="icon-xs"
+                        variant="ghost"
+                        disabled={
+                          index === fields.length - 1 || deleteField.isPending
+                        }
+                        onClick={() => handleMove(index, 1)}
+                        aria-label="Move field down"
+                      >
+                        <ChevronDown />
+                      </Button>
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {field.label}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        key: {field.field_key} · type:{" "}
+                        {FIELD_LABELS[field.field_type] ?? field.field_type}
+                      </p>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {!field.active && (
+                        <Badge className="border-amber-300 bg-amber-500/10 text-amber-600 dark:border-amber-400/40 dark:text-amber-400">
+                          Inactive
+                        </Badge>
+                      )}
+
+                      {field.required && (
+                        <Badge className="border-destructive/30 bg-destructive/10 text-destructive">
+                          Required
+                        </Badge>
+                      )}
+
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="outline"
+                        onClick={() => {
+                          setDraft(draftForField(field));
+                          setError("");
+                        }}
+                        aria-label={`Edit ${field.label}`}
+                      >
+                        <Pencil />
+                      </Button>
+
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="outline"
+                        className="text-destructive hover:bg-destructive/10"
+                        disabled={deleteField.isPending}
+                        onClick={() => handleDelete(field)}
+                        aria-label={`Delete ${field.label}`}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {error && <p className="text-sm text-red-500">{error}</p>}
+
+          <DialogFooter showCloseButton>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
