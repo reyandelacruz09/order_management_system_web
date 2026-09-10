@@ -35,5 +35,8 @@ jobs:
       - name: Typecheck & build
         run: npm run build
 
+      - name: Test
+        run: npm test
+
       - name: Build Docker image
         run: docker build -t n_t_web_exercise:ci .
